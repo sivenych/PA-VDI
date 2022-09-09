@@ -1,6 +1,9 @@
 import asyncio
+import ipaddress
 import aiodns
 import socket
+import os
+import sys
 
 
 class UdpClientProtocol:
@@ -94,24 +97,71 @@ async def reformator():
         await queue_out.put(rs)
 
 
-queue_in = asyncio.Queue()
-queue_out = asyncio.Queue()
-
-loop = asyncio.get_event_loop()
-print("Starting UDP server")
-# One protocol instance will be created to serve all client requests
-listen = loop.create_datagram_endpoint(
-    SyslogServerProtocol, local_addr=('0.0.0.0', 514))
-
-loop.create_task(reformator())
-loop.create_task(udp_sender([('127.0.0.1', 9999), ('127.0.0.1', 9998)]))
-
-transport, protocol = loop.run_until_complete(listen)
-
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
+class WrongPort(Exception):
     pass
 
-transport.close()
-loop.close()
+
+def parse_addresses(inp: str) -> list:
+    res = []
+    par = inp.split(',')
+    for elem in par:
+        addr_pair = elem.strip().split(':')
+        try:
+            ip = str(ipaddress.ip_address(addr_pair[0]))
+            port = int(addr_pair[1])
+            if str(port + 0) != addr_pair[1]:
+                raise WrongPort('Wrong port number: ' + str(addr_pair[1]))
+        except ValueError as e:
+            print("Wrong IPv4 in the pair " + elem + ": " + str(e))
+            continue
+        except IndexError as e:
+            print("No port number set in " + elem + ": " + str(e))
+            continue
+        except WrongPort as e:
+            print("Wrong port number " + addr_pair[1] + " in " + elem + ": " + str(e))
+            continue
+        res.append((ip, port))
+    return res
+
+
+if __name__ == '__main__':
+
+    try:
+        my_side = parse_addresses(os.environ["LOCAL_ADDR"])[0]
+    except KeyError as e:
+        print("No value for environment variable LOCAL_ADDR. Using 0.0.0.0:514.")
+        my_side = ('0.0.0.0', 514)
+    except IndexError as e:
+        print("Can't detect local address:port parameters. Using 0.0.0.0:514." + str(e))
+        my_side = ('0.0.0.0', 514)
+
+    try:
+        remotes = parse_addresses(os.environ["REMOTES"])
+    except KeyError as e:
+        print("No value for environment variable REMOTES. Exiting.")
+        sys.exit(1)
+    if len(remotes) == 0:
+        print("Can't detect remotes. Exiting. ")
+        sys.exit(2)
+
+    queue_in = asyncio.Queue()
+    queue_out = asyncio.Queue()
+
+    loop = asyncio.get_event_loop()
+    print("Starting UDP server")
+    # One protocol instance will be created to serve all client requests
+    listen = loop.create_datagram_endpoint(
+        SyslogServerProtocol, local_addr=my_side)
+
+    loop.create_task(reformator())
+    loop.create_task(udp_sender(remotes))
+
+    transport, protocol = loop.run_until_complete(listen)
+
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        pass
+
+    transport.close()
+    loop.close()
