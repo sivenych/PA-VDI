@@ -42,7 +42,7 @@ class SyslogServerProtocol(asyncio.DatagramProtocol):
 
     def datagram_received(self, data, addr):
         message = data.decode().strip()
-        # print('Received %r from %s' % (message, addr))
+        print('Received %r from %s' % (message, addr))
         queue_in.put_nowait(message)
         # print('Send %r to %s' % (rs, addr))
         # self.transport.sendto(rs.encode(), addr)
@@ -147,7 +147,8 @@ if __name__ == '__main__':
     queue_in = asyncio.Queue()
     queue_out = asyncio.Queue()
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     print("Starting UDP server")
     # One protocol instance will be created to serve all client requests
     listen = loop.create_datagram_endpoint(
