@@ -32,12 +32,12 @@ class UdpClientProtocol:
         pass
 
 
-def server_holder(debug: bool = False):
+def server_holder(dbg: bool = False):
     class SyslogServerProtocol(asyncio.DatagramProtocol):
         def __init__(self, ):
             super().__init__()
             self.transport = None
-            self.debug = debug
+            self.debug = dbg
 
         def connection_made(self, trans):
             self.transport = trans
@@ -51,9 +51,10 @@ def server_holder(debug: bool = False):
             # self.transport.sendto(rs.encode(), addr)
     return SyslogServerProtocol
 
-async def send_message(remote, message, debug: bool = False):
+
+async def send_message(remote, message, dbg: bool = False):
     # on_con_lost = loop.create_future()
-    if debug:
+    if dbg:
         print("Remote => " + str(remote) + " #### " + message)
     tr, proto = await loop.create_datagram_endpoint(
         lambda: UdpClientProtocol(message, loop),
@@ -63,11 +64,11 @@ async def send_message(remote, message, debug: bool = False):
     tr.close()
 
 
-async def udp_sender(remotes):
+async def udp_sender(rmts, dbg: bool = False):
     while True:
         message = await queue_out.get()
-        for remote in remotes:
-            loop.create_task(send_message(remote, message))
+        for remote in rmts:
+            loop.create_task(send_message(remote, message, dbg))
 
 
 async def reformator():
@@ -100,10 +101,6 @@ async def reformator():
                     res.append('[' + p[index + 1] + ']')
         rs = ' '.join(res) + '\n'
         await queue_out.put(rs)
-
-
-class WrongPort(Exception):
-    pass
 
 
 def parse_addresses(inp: str, debug: bool = True) -> list:
@@ -145,6 +142,12 @@ def parse_addresses(inp: str, debug: bool = True) -> list:
 if __name__ == '__main__':
 
     try:
+        _ = os.environ["DEBUG"]
+        debug = True
+    except KeyError:
+        debug = False
+
+    try:
         my_side = parse_addresses(os.environ["LOCAL_ADDR"])[0]
     except KeyError as e:
         print("No value for environment variable LOCAL_ADDR. Using 0.0.0.0:514.")
@@ -171,7 +174,7 @@ if __name__ == '__main__':
     print("Starting UDP server")
     # One protocol instance will be created to serve all client requests
     listen = loop.create_datagram_endpoint(
-        server_holder(debug=True), local_addr=my_side)
+        server_holder(debug=debug), local_addr=my_side)
 
     loop.create_task(reformator())
     loop.create_task(udp_sender(remotes))
