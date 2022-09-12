@@ -108,12 +108,16 @@ def parse_addresses(inp: str) -> list:
         addr_pair = elem.strip().split(':')
         try:
             ip = str(ipaddress.ip_address(addr_pair[0]))
+        except ValueError as e:
+            try:
+                ip = socket.gethostbyname(addr_pair[0])
+            except socket.gaierror as e:
+                print("Wrong IPv4/hostname in the pair " + elem + ": " + str(e))
+                continue
+        try:
             port = int(addr_pair[1])
             if str(port + 0) != addr_pair[1]:
                 raise WrongPort('Wrong port number: ' + str(addr_pair[1]))
-        except ValueError as e:
-            print("Wrong IPv4 in the pair " + elem + ": " + str(e))
-            continue
         except IndexError as e:
             print("No port number set in " + elem + ": " + str(e))
             continue
