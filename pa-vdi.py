@@ -32,23 +32,24 @@ class UdpClientProtocol:
         pass
 
 
-class SyslogServerProtocol(asyncio.DatagramProtocol):
-    def __init__(self, debug: bool = False):
-        super().__init__()
-        self.transport = None
-        self.debug = debug
+def server_holder(debug: bool = False):
+    class SyslogServerProtocol(asyncio.DatagramProtocol):
+        def __init__(self, ):
+            super().__init__()
+            self.transport = None
+            self.debug = debug
 
-    def connection_made(self, trans):
-        self.transport = trans
+        def connection_made(self, trans):
+            self.transport = trans
 
-    def datagram_received(self, data, addr):
-        message = data.decode().strip()
-        if self.debug:
-            print('Received %r from %s' % (message, addr))
-        queue_in.put_nowait(message)
-        # print('Send %r to %s' % (rs, addr))
-        # self.transport.sendto(rs.encode(), addr)
-
+        def datagram_received(self, data, addr):
+            message = data.decode().strip()
+            if self.debug:
+                print('Received %r from %s' % (message, addr))
+            queue_in.put_nowait(message)
+            # print('Send %r to %s' % (rs, addr))
+            # self.transport.sendto(rs.encode(), addr)
+    return SyslogServerProtocol
 
 async def send_message(remote, message, debug: bool = False):
     # on_con_lost = loop.create_future()
@@ -170,7 +171,7 @@ if __name__ == '__main__':
     print("Starting UDP server")
     # One protocol instance will be created to serve all client requests
     listen = loop.create_datagram_endpoint(
-        SyslogServerProtocol, local_addr=my_side)
+        server_holder(debug=True), local_addr=my_side)
 
     loop.create_task(reformator())
     loop.create_task(udp_sender(remotes))
