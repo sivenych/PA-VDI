@@ -157,11 +157,12 @@ if __name__ == '__main__':
         print("Can't detect remotes. Exiting. ")
         sys.exit(2)
 
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     queue_in = asyncio.Queue()
     queue_out = asyncio.Queue()
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
     print("Starting UDP server")
     # One protocol instance will be created to serve all client requests
     listen = loop.create_datagram_endpoint(
