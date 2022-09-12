@@ -101,28 +101,37 @@ class WrongPort(Exception):
     pass
 
 
-def parse_addresses(inp: str) -> list:
+def parse_addresses(inp: str, debug: bool = True) -> list:
     res = []
     par = inp.split(',')
     for elem in par:
         addr_pair = elem.strip().split(':')
+        addr_part = addr_pair[0].strip()
         try:
-            ip = str(ipaddress.ip_address(addr_pair[0]))
+            ip = str(ipaddress.ip_address(addr_part))
         except ValueError as e:
             try:
-                ip = socket.gethostbyname(addr_pair[0])
+                ip = socket.gethostbyname(addr_part)
             except socket.gaierror as e:
-                print("Wrong IPv4/hostname in the pair " + elem + ": " + str(e))
+                if debug:
+                    print("Wrong IPv4/hostname in the pair " + elem + ": " + str(e))
                 continue
         try:
-            port = int(addr_pair[1])
-            if str(port + 0) != addr_pair[1]:
-                raise WrongPort('Wrong port number: ' + str(addr_pair[1]))
+            port_part = addr_pair[1].strip()
+            port = int(port_part)
+            if str(port + 0) != port_part:
+                raise WrongPort('Wrong port number: ' + str(port_part))
         except IndexError as e:
-            print("No port number set in " + elem + ": " + str(e))
+            if debug:
+                print("No port number set in " + elem + ": " + str(e))
             continue
-        except WrongPort as e:
-            print("Wrong port number " + addr_pair[1] + " in " + elem + ": " + str(e))
+        except ValueError as e:
+            if debug:
+                print("Wrong port number " + port_part + " in " + elem + ": " + str(e))
+            continue
+        if port < 0 or port > 65535:
+            if debug:
+                print("Wrong port number " + str(port) + " in " + elem)
             continue
         res.append((ip, port))
     return res
