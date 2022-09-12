@@ -50,6 +50,7 @@ class SyslogServerProtocol(asyncio.DatagramProtocol):
 
 async def send_message(remote, message):
     # on_con_lost = loop.create_future()
+    print("Remote => " + remote + " #### " + message)
     tr, proto = await loop.create_datagram_endpoint(
         lambda: UdpClientProtocol(message, loop),
         remote_addr=(remote[0], remote[1]))
