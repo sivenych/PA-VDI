@@ -174,7 +174,7 @@ if __name__ == '__main__':
     print("Starting UDP server")
     # One protocol instance will be created to serve all client requests
     listen = loop.create_datagram_endpoint(
-        server_holder(debug=debug), local_addr=my_side)
+        server_holder(dbg=debug), local_addr=my_side)
 
     loop.create_task(reformator())
     loop.create_task(udp_sender(remotes))
