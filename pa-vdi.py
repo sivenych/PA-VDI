@@ -170,8 +170,12 @@ if __name__ == '__main__':
     loop.create_task(reformator())
     loop.create_task(udp_sender(remotes))
 
-    transport, protocol = loop.run_until_complete(listen)
-
+    try:
+        transport, protocol = loop.run_until_complete(listen)
+    except PermissionError as e:
+        print("Can't bind to listening socket: " + e)
+        loop.close()
+        sys.exit(3)
     try:
         loop.run_forever()
     except KeyboardInterrupt:
